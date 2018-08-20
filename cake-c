@@ -51,9 +51,10 @@ code=$(basename "$1")
 outDir=$(dirname "$1")
 
 # Make a temporary working directory.
-echo 'Setting up environment...'
-
 dir=$(mktemp -d)
+
+echo "Setting up environment... Location: $dir"
+
 cp "$cake_basis" "$dir"
 cp "$cake_basis_obj" "$dir"
 cp "$cake_cake" "$dir"
