@@ -1,0 +1,79 @@
+#!/bin/sh
+
+set -e
+
+help() {
+  echo 'CakeML Compiler Wrapper'
+  echo 'Usage:'
+  echo 'cake-c infile outfile'
+  echo 'e.g.'
+  echo 'cake-c hello.cml hello'
+}
+
+if [ -z "$1" ] || [ -z "$2" ] || [ "$1" = '-h' ] || [ "$1" = '--help' ]; then
+  help
+  exit 0
+fi
+
+# Get CakeML's home dir
+root=$(dirname "$(readlink -f "$0")")
+
+# CakeML's base
+cake_basis="$root"/basis_ffi.c
+cake_basis_obj="$root"/basis_ffi.o
+
+if [ ! -r "$cake_basis" ] || [ ! -r "$cake_basis_obj" ]; then
+  echo 'Could not find CakeMLs ffi. Is CakeML installed correctly?' >&2
+  echo 'Is cake-c installed correctly?' >&2
+  exit 1
+fi
+
+# CakeML itself
+cake_cake="$root"/cake
+cake_cake_obj="$root"/cake.o
+
+if [ ! -x "$cake_cake" ] || [ ! -r "$cake_cake_obj" ]; then
+  echo 'Could not find CakeML. Is it installed correctly?' >&2
+  echo 'Is cake-c installed correctly?' >&2
+  exit 1
+fi
+
+# Check given input file.
+if [ ! -r "$1" ]; then
+  echo 'Could not read given input file. Does it exist?' >&2
+  echo 'Do you have read permission?' >&2
+  exit 1
+fi
+
+# Get name for after we copy it.
+code=$(basename "$1")
+# Get the folder to where the final executable should be found
+outDir=$(dirname "$1")
+
+# Make a temporary working directory.
+echo 'Setting up environment...'
+
+dir=$(mktemp -d)
+cp "$cake_basis" "$dir"
+cp "$cake_basis_obj" "$dir"
+cp "$cake_cake" "$dir"
+cp "$cake_cake_obj" "$dir"
+cp "$1" "$dir"
+
+echo 'Environment built.'
+
+# Compile it.
+echo 'Compiling CakeML data...'
+"$dir"/cake <"$dir/$code" > "$dir/$code".S
+echo 'Compiling executable...'
+cc -o "$dir/$code".bin "$dir"/basis_ffi.c "$dir/$code".S
+
+# Copy it back.
+cp "$dir/$code".bin "$outDir"/"$2"
+echo 'Done Compiling.'
+
+# Remove our clutter.
+echo 'Removing environment...'
+rm -rf "$dir"
+echo 'Environment removed.'
+
